@@ -1,10 +1,11 @@
 export default async function handler(req, res) {
-  // 주소에서 's/' 뒤에 오는 글자만 정확히 가져옵니다.
-  const urlParts = req.url.split('/s/');
-  const shortId = urlParts.length > 1 ? urlParts[1] : null;
+  // 1. 전체 주소에서 순수한 shortId만 뽑아냅니다.
+  // 주소창에 들어온 /s/abc?path=abc 형태에서 쿼리스트링(?)을 제거합니다.
+  const cleanUrl = req.url.split('?')[0]; 
+  const shortId = cleanUrl.split('/').pop();
 
-  if (!shortId) {
-    return res.status(404).send("잘못된 접근입니다. (코드 없음)");
+  if (!shortId || shortId === 's') {
+    return res.status(404).send("잘못된 접근입니다. 코드가 없습니다.");
   }
 
   const SUPABASE_URL = "https://zefsltbwunyxqadwumfb.supabase.co";
@@ -21,14 +22,14 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (data && data.length > 0) {
-      // 찾았다면 리다이렉트
+      // 성공 시 해당 주소로 이동
       res.writeHead(302, { Location: data[0].original_url });
       res.end();
     } else {
-      // DB에 해당 short_id가 없는 경우
+      // DB에 없는 경우 표시되는 메시지
       res.status(404).send(`주소를 찾을 수 없습니다. (입력된 코드: ${shortId})`);
     }
   } catch (e) {
-    res.status(500).send("서버 에러: " + e.message);
+    res.status(500).send("서버 에러가 발생했습니다: " + e.message);
   }
 }
