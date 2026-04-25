@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 URL 단축기</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+        textarea { width: 100%; height: 150px; margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; resize: none; }
+        button { width: 100%; padding: 15px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; margin-bottom: 10px; }
+        .btn-convert { background-color: #007bff; color: white; }
+        .btn-copy { background-color: #28a745; color: white; }
+        button:disabled { background-color: #ccc; }
+        h2 { text-align: center; color: #333; }
+    </style>
+</head>
+<body>
+
+    <h2>🔗 대량 URL 단축기</h2>
+
+    <textarea id="longUrls" placeholder="긴 URL을 한 줄에 하나씩 입력하세요.&#10;예시:&#10;https://google.com&#10;https://naver.com"></textarea>
+
+    <button id="convertBtn" class="btn-convert" onclick="convertUrls()">변환하기</button>
+
+    <textarea id="shortUrls" placeholder="변환된 주소가 여기에 표시됩니다." readonly></textarea>
+
+    <button id="copyBtn" class="btn-copy" onclick="copyToClipboard()">복사하기</button>
+
+<script>
+    const SUPABASE_URL = "https://zefsltbwunyxqadwumfb.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZnNsdGJ3dW55eHFhZHd1bWZiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzA4NzAwNSwiZXhwIjoyMDkyNjYzMDA1fQ.zpTTsmrPB5ijJt1_XQ-v4J9YcoxDmRmGE05t25Cbdlo";
+
+    function generateRandomCode(length = 6) {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    async function convertUrls() {
+        const input = document.getElementById('longUrls').value.trim();
+        const convertBtn = document.getElementById('convertBtn');
+        const outputArea = document.getElementById('shortUrls');
+
+        if (!input) {
+            alert("긴 URL을 입력해주세요.");
+            return;
+        }
+
+        const urls = input.split('\n').filter(url => url.trim() !== "");
+        convertBtn.disabled = true;
+        convertBtn.innerText = "처리 중...";
+        
+        let results = [];
+        const currentDomain = window.location.origin;
+
+        for (let url of urls) {
+            const targetUrl = url.trim();
+            
+            try {
+                // 1. 이미 존재하는지 조회 (original_url 열에서 찾기)
+                const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/urls?original_url=eq.${encodeURIComponent(targetUrl)}&select=short_id`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                const existingData = await checkResponse.json();
+
+                if (existingData.length > 0) {
+                    // 이미 있다면 기존 ID 사용
+                    results.push(`${currentDomain}/s/${existingData[0].short_id}`);
+                } else {
+                    // 없다면 새로 생성 후 저장
+                    const shortId = generateRandomCode();
+                    const saveResponse = await fetch(`${SUPABASE_URL}/rest/v1/urls`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({
+                            short_id: shortId,
+                            original_url: targetUrl
+                        })
+                    });
+
+                    if (saveResponse.ok) {
+                        results.push(`${currentDomain}/s/${shortId}`);
+                    } else {
+                        results.push(`저장 실패: ${targetUrl.substring(0, 20)}...`);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                results.push("에러 발생");
+            }
+        }
+
+        outputArea.value = results.join('\n');
+        convertBtn.disabled = false;
+        convertBtn.innerText = "변환하기";
+    }
+
+    function copyToClipboard() {
+        const outputArea = document.getElementById('shortUrls');
+        outputArea.select();
+        document.execCommand('copy');
+        alert("복사되었습니다!");
+    }
+</script>
+</body>
+</html>
