@@ -8,8 +8,7 @@ export default async function handler(req, res) {
     return res.status(404).send("잘못된 접근입니다. 코드가 없습니다.");
   }
 
-  const SUPABASE_URL = "https://zefsltbwunyxqadwumfb.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplZnNsdGJ3dW55eHFhZHd1bWZiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzA4NzAwNSwiZXhwIjoyMDkyNjYzMDA1fQ.zpTTsmrPB5ijJt1_XQ-v4J9YcoxDmRmGE05t25Cbdlo";
+  const { SUPABASE_URL, SUPABASE_KEY } = process.env;
 
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/urls?short_id=eq.${shortId}&select=original_url`, {
